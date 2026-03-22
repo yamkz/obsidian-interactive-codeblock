@@ -42,6 +42,7 @@ ${source}
   }
   window.addEventListener("load", function() {
     notifyHeight();
+    setTimeout(notifyHeight, 300);
   });
   notifyHeight();
 </script>
@@ -51,8 +52,9 @@ ${source}
 			const iframe = document.createElement("iframe");
 			iframe.setAttribute("sandbox", "allow-scripts");
 			iframe.setAttribute("srcdoc", srcdoc);
-			iframe.style.height = "0px";
+			iframe.style.height = "1px";
 			iframe.style.opacity = "0";
+			iframe.style.position = "absolute";
 			container.appendChild(iframe);
 
 			let currentHeight = 0;
@@ -65,12 +67,13 @@ ${source}
 				) {
 					if (event.source === iframe.contentWindow) {
 						const newHeight = event.data.height;
-						if (newHeight !== currentHeight) {
+						if (newHeight > 0 && newHeight !== currentHeight) {
 							currentHeight = newHeight;
 							iframe.style.height = newHeight + "px";
+							iframe.style.position = "relative";
 						}
 						// Show iframe, hide skeleton
-						if (skeleton.parentElement) {
+						if (newHeight > 0 && skeleton.parentElement) {
 							skeleton.classList.add("interactive-codeblock-skeleton-hide");
 							iframe.classList.add("interactive-codeblock-iframe-show");
 							setTimeout(() => skeleton.remove(), 300);
