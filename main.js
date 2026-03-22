@@ -56,7 +56,7 @@ ${source}
     var scrollH = document.documentElement.scrollHeight;
     var offsetH = document.body.offsetHeight;
     var h = Math.max(scrollH, offsetH);
-    if (h !== lastHeight) {
+    if (h > 0 && h !== lastHeight) {
       lastHeight = h;
       parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
     }
@@ -76,25 +76,21 @@ ${source}
       const iframe = document.createElement("iframe");
       iframe.setAttribute("sandbox", "allow-scripts");
       iframe.setAttribute("srcdoc", srcdoc);
-      iframe.style.height = "1px";
-      iframe.style.opacity = "0";
-      iframe.style.position = "absolute";
+      iframe.style.height = "120px";
       container.appendChild(iframe);
       let currentHeight = 0;
+      let revealed = false;
       const handler = (event) => {
-        if (event.data && event.data.type === "interactive-codeblock-resize" && typeof event.data.height === "number") {
-          if (event.source === iframe.contentWindow) {
-            const newHeight = event.data.height;
-            if (newHeight > 0 && newHeight !== currentHeight) {
-              currentHeight = newHeight;
-              iframe.style.height = newHeight + "px";
-              iframe.style.position = "relative";
-            }
-            if (newHeight > 0 && skeleton.parentElement) {
-              skeleton.classList.add("interactive-codeblock-skeleton-hide");
-              iframe.classList.add("interactive-codeblock-iframe-show");
-              setTimeout(() => skeleton.remove(), 300);
-            }
+        if (event.data && event.data.type === "interactive-codeblock-resize" && typeof event.data.height === "number" && event.source === iframe.contentWindow) {
+          const newHeight = event.data.height;
+          if (newHeight > 0 && newHeight !== currentHeight) {
+            currentHeight = newHeight;
+            iframe.style.height = newHeight + "px";
+          }
+          if (!revealed && newHeight > 0) {
+            revealed = true;
+            skeleton.classList.add("interactive-codeblock-skeleton-hide");
+            setTimeout(() => skeleton.remove(), 300);
           }
         }
       };

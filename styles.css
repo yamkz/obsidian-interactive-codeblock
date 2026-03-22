@@ -4,26 +4,24 @@
 	border-radius: 8px;
 	overflow: hidden;
 	margin: 4px 0;
+	position: relative;
 }
 
 .interactive-codeblock-container iframe {
 	width: 100%;
 	border: none;
 	display: block;
-	opacity: 0;
-	transition: opacity 0.3s ease;
-}
-
-.interactive-codeblock-container iframe.interactive-codeblock-iframe-show {
-	opacity: 1;
 }
 
 .interactive-codeblock-skeleton {
-	height: 120px;
-	border-radius: 6px;
-	background: var(--background-secondary, #e0e0e0);
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 1;
+	background: var(--background-secondary, #2b2b2b);
 	overflow: hidden;
-	position: relative;
 	transition: opacity 0.3s ease;
 }
 
@@ -37,7 +35,7 @@
 	background: linear-gradient(
 		90deg,
 		transparent 0%,
-		var(--background-modifier-hover, rgba(255, 255, 255, 0.3)) 50%,
+		var(--background-modifier-hover, rgba(255, 255, 255, 0.08)) 50%,
 		transparent 100%
 	);
 	animation: interactive-codeblock-shimmer 1.5s infinite;
@@ -45,6 +43,7 @@
 
 .interactive-codeblock-skeleton-hide {
 	opacity: 0;
+	pointer-events: none;
 }
 
 @keyframes interactive-codeblock-shimmer {

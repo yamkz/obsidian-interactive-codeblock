@@ -6,7 +6,7 @@ export default class InteractiveCodeblockPlugin extends Plugin {
 			const container = el.createDiv({ cls: "interactive-codeblock-container" });
 			const isDark = document.body.classList.contains("theme-dark");
 
-			// Skeleton UI with shimmer effect
+			// Skeleton overlays the iframe until content is ready
 			const skeleton = container.createDiv({ cls: "interactive-codeblock-skeleton" });
 
 			const srcdoc = `<!DOCTYPE html>
@@ -31,7 +31,7 @@ ${source}
     var scrollH = document.documentElement.scrollHeight;
     var offsetH = document.body.offsetHeight;
     var h = Math.max(scrollH, offsetH);
-    if (h !== lastHeight) {
+    if (h > 0 && h !== lastHeight) {
       lastHeight = h;
       parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
     }
@@ -45,45 +45,40 @@ ${source}
     setTimeout(notifyHeight, 300);
   });
   notifyHeight();
-</script>
+<\/script>
 </body>
 </html>`;
 
 			const iframe = document.createElement("iframe");
 			iframe.setAttribute("sandbox", "allow-scripts");
 			iframe.setAttribute("srcdoc", srcdoc);
-			iframe.style.height = "1px";
-			iframe.style.opacity = "0";
-			iframe.style.position = "absolute";
+			iframe.style.height = "120px";
 			container.appendChild(iframe);
 
 			let currentHeight = 0;
+			let revealed = false;
 
 			const handler = (event: MessageEvent) => {
 				if (
 					event.data &&
 					event.data.type === "interactive-codeblock-resize" &&
-					typeof event.data.height === "number"
+					typeof event.data.height === "number" &&
+					event.source === iframe.contentWindow
 				) {
-					if (event.source === iframe.contentWindow) {
-						const newHeight = event.data.height;
-						if (newHeight > 0 && newHeight !== currentHeight) {
-							currentHeight = newHeight;
-							iframe.style.height = newHeight + "px";
-							iframe.style.position = "relative";
-						}
-						// Show iframe, hide skeleton
-						if (newHeight > 0 && skeleton.parentElement) {
-							skeleton.classList.add("interactive-codeblock-skeleton-hide");
-							iframe.classList.add("interactive-codeblock-iframe-show");
-							setTimeout(() => skeleton.remove(), 300);
-						}
+					const newHeight = event.data.height;
+					if (newHeight > 0 && newHeight !== currentHeight) {
+						currentHeight = newHeight;
+						iframe.style.height = newHeight + "px";
+					}
+					if (!revealed && newHeight > 0) {
+						revealed = true;
+						skeleton.classList.add("interactive-codeblock-skeleton-hide");
+						setTimeout(() => skeleton.remove(), 300);
 					}
 				}
 			};
 			window.addEventListener("message", handler);
 
-			// Clean up listener when the element is removed
 			const observer = new MutationObserver(() => {
 				if (!el.isConnected) {
 					window.removeEventListener("message", handler);
