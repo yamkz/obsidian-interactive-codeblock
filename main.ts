@@ -6,6 +6,9 @@ export default class InteractiveCodeblockPlugin extends Plugin {
 			const container = el.createDiv({ cls: "interactive-codeblock-container" });
 			const isDark = document.body.classList.contains("theme-dark");
 
+			// Skeleton UI with shimmer effect
+			const skeleton = container.createDiv({ cls: "interactive-codeblock-skeleton" });
+
 			const srcdoc = `<!DOCTYPE html>
 <html>
 <head>
@@ -23,11 +26,15 @@ export default class InteractiveCodeblockPlugin extends Plugin {
 <body>
 ${source}
 <script>
+  var lastHeight = 0;
   function notifyHeight() {
     var scrollH = document.documentElement.scrollHeight;
     var offsetH = document.body.offsetHeight;
     var h = Math.max(scrollH, offsetH);
-    parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
+    if (h !== lastHeight) {
+      lastHeight = h;
+      parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
+    }
   }
   new MutationObserver(notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
   if (typeof ResizeObserver !== "undefined") {
@@ -35,9 +42,6 @@ ${source}
   }
   window.addEventListener("load", function() {
     notifyHeight();
-    setTimeout(notifyHeight, 100);
-    setTimeout(notifyHeight, 500);
-    setTimeout(notifyHeight, 1000);
   });
   notifyHeight();
 </script>
@@ -47,8 +51,11 @@ ${source}
 			const iframe = document.createElement("iframe");
 			iframe.setAttribute("sandbox", "allow-scripts");
 			iframe.setAttribute("srcdoc", srcdoc);
-			iframe.style.height = "300px";
+			iframe.style.height = "0px";
+			iframe.style.opacity = "0";
 			container.appendChild(iframe);
+
+			let currentHeight = 0;
 
 			const handler = (event: MessageEvent) => {
 				if (
@@ -57,29 +64,21 @@ ${source}
 					typeof event.data.height === "number"
 				) {
 					if (event.source === iframe.contentWindow) {
-						iframe.style.height = (event.data.height + 20) + "px";
+						const newHeight = event.data.height;
+						if (newHeight !== currentHeight) {
+							currentHeight = newHeight;
+							iframe.style.height = newHeight + "px";
+						}
+						// Show iframe, hide skeleton
+						if (skeleton.parentElement) {
+							skeleton.classList.add("interactive-codeblock-skeleton-hide");
+							iframe.classList.add("interactive-codeblock-iframe-show");
+							setTimeout(() => skeleton.remove(), 300);
+						}
 					}
 				}
 			};
 			window.addEventListener("message", handler);
-
-			// Wait for iframe load, then trigger resize
-			iframe.addEventListener("load", () => {
-				try {
-					iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
-				} catch (_) { /* sandbox may block */ }
-				// Delayed resizes to catch late-rendering content
-				setTimeout(() => {
-					try {
-						iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
-					} catch (_) { /* sandbox may block */ }
-				}, 200);
-				setTimeout(() => {
-					try {
-						iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
-					} catch (_) { /* sandbox may block */ }
-				}, 600);
-			});
 
 			// Clean up listener when the element is removed
 			const observer = new MutationObserver(() => {
