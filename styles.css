@@ -1,0 +1,13 @@
+.interactive-codeblock-container {
+	width: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+	margin: 4px 0;
+}
+
+.interactive-codeblock-container iframe {
+	width: 100%;
+	border: none;
+	display: block;
+}
