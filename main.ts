@@ -24,11 +24,21 @@ export default class InteractiveCodeblockPlugin extends Plugin {
 ${source}
 <script>
   function notifyHeight() {
-    var h = document.documentElement.scrollHeight;
+    var scrollH = document.documentElement.scrollHeight;
+    var offsetH = document.body.offsetHeight;
+    var h = Math.max(scrollH, offsetH);
     parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
   }
   new MutationObserver(notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
-  window.addEventListener("load", notifyHeight);
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(notifyHeight).observe(document.body);
+  }
+  window.addEventListener("load", function() {
+    notifyHeight();
+    setTimeout(notifyHeight, 100);
+    setTimeout(notifyHeight, 500);
+    setTimeout(notifyHeight, 1000);
+  });
   notifyHeight();
 </script>
 </body>
@@ -37,7 +47,7 @@ ${source}
 			const iframe = document.createElement("iframe");
 			iframe.setAttribute("sandbox", "allow-scripts");
 			iframe.setAttribute("srcdoc", srcdoc);
-			iframe.style.height = "100px";
+			iframe.style.height = "300px";
 			container.appendChild(iframe);
 
 			const handler = (event: MessageEvent) => {
@@ -46,13 +56,30 @@ ${source}
 					event.data.type === "interactive-codeblock-resize" &&
 					typeof event.data.height === "number"
 				) {
-					// Check that this message came from one of our iframes
 					if (event.source === iframe.contentWindow) {
-						iframe.style.height = event.data.height + "px";
+						iframe.style.height = (event.data.height + 20) + "px";
 					}
 				}
 			};
 			window.addEventListener("message", handler);
+
+			// Wait for iframe load, then trigger resize
+			iframe.addEventListener("load", () => {
+				try {
+					iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+				} catch (_) { /* sandbox may block */ }
+				// Delayed resizes to catch late-rendering content
+				setTimeout(() => {
+					try {
+						iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+					} catch (_) { /* sandbox may block */ }
+				}, 200);
+				setTimeout(() => {
+					try {
+						iframe.contentWindow?.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+					} catch (_) { /* sandbox may block */ }
+				}, 600);
+			});
 
 			// Clean up listener when the element is removed
 			const observer = new MutationObserver(() => {

@@ -51,11 +51,21 @@ var InteractiveCodeblockPlugin = class extends import_obsidian.Plugin {
 ${source}
 <script>
   function notifyHeight() {
-    var h = document.documentElement.scrollHeight;
+    var scrollH = document.documentElement.scrollHeight;
+    var offsetH = document.body.offsetHeight;
+    var h = Math.max(scrollH, offsetH);
     parent.postMessage({ type: "interactive-codeblock-resize", height: h }, "*");
   }
   new MutationObserver(notifyHeight).observe(document.body, { childList: true, subtree: true, attributes: true });
-  window.addEventListener("load", notifyHeight);
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(notifyHeight).observe(document.body);
+  }
+  window.addEventListener("load", function() {
+    notifyHeight();
+    setTimeout(notifyHeight, 100);
+    setTimeout(notifyHeight, 500);
+    setTimeout(notifyHeight, 1000);
+  });
   notifyHeight();
 <\/script>
 </body>
@@ -63,16 +73,37 @@ ${source}
       const iframe = document.createElement("iframe");
       iframe.setAttribute("sandbox", "allow-scripts");
       iframe.setAttribute("srcdoc", srcdoc);
-      iframe.style.height = "100px";
+      iframe.style.height = "300px";
       container.appendChild(iframe);
       const handler = (event) => {
         if (event.data && event.data.type === "interactive-codeblock-resize" && typeof event.data.height === "number") {
           if (event.source === iframe.contentWindow) {
-            iframe.style.height = event.data.height + "px";
+            iframe.style.height = event.data.height + 20 + "px";
           }
         }
       };
       window.addEventListener("message", handler);
+      iframe.addEventListener("load", () => {
+        var _a;
+        try {
+          (_a = iframe.contentWindow) == null ? void 0 : _a.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+        } catch (_) {
+        }
+        setTimeout(() => {
+          var _a2;
+          try {
+            (_a2 = iframe.contentWindow) == null ? void 0 : _a2.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+          } catch (_) {
+          }
+        }, 200);
+        setTimeout(() => {
+          var _a2;
+          try {
+            (_a2 = iframe.contentWindow) == null ? void 0 : _a2.postMessage({ type: "interactive-codeblock-request-resize" }, "*");
+          } catch (_) {
+          }
+        }, 600);
+      });
       const observer = new MutationObserver(() => {
         if (!el.isConnected) {
           window.removeEventListener("message", handler);
